@@ -60,6 +60,32 @@ Vista de los registros generados tras las pruebas de validación de usuarios.
 
 ---
 
+## 📸 Demostración de Uso (Casos de Prueba)
+
+A continuación se muestran los flujos reales de interacción con el sistema mediante la interfaz web.
+
+### 1. Acceso de Socio (Identificación Biométrica)
+El sistema captura el rostro, lo compara con el `PersonGroup` de Azure y, si hay coincidencia, devuelve un saludo personalizado.
+![Entrada Socio](img/gym7.jpg)
+> **Fig 7.** *El sistema reconoce al usuario y le da la bienvenida por su nombre ("Bienvenido Beni").*
+
+### 2. Salida de Socio
+Al registrar la salida, el sistema libera el aforo en tiempo real y actualiza los contadores de la sala correspondiente.
+![Salida Socio](img/gym8.jpg)
+> **Fig 8.** *Confirmación de salida y cálculo de tiempo de estancia.*
+
+### 3. Entrada de Invitado (Gestión de Aforo)
+Los invitados acceden vinculados al ID de un socio anfitrión. El dashboard diferencia entre tipos de usuario.
+![Entrada Invitado](img/gym9.jpg)
+> **Fig 9.** *Acceso concedido a un invitado del Socio con ID 2. Nótese en la barra superior cómo el contador de "Invitados" ha aumentado.*
+
+### 4. Salida de Invitado (Bypass de IA)
+Para los invitados, el sistema aplica una lógica diferente: **se salta el reconocimiento facial** (Face Identify) para proteger la privacidad, ya que no existen en la base de datos biométrica, limitándose a validar el ID del anfitrión.
+![Salida Invitado](img/gym10.jpg)
+> **Fig 10.** *El sistema procesa la salida del invitado sin realizar identificación facial.*
+
+---
+
 ## ✨ Características Principales
 
 * **🔐 Acceso Biométrico:** Entrada sin contacto mediante Azure Face API.
