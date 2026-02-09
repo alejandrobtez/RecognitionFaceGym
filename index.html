@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Gym en Tiempo Real</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .main-container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* TARJETA DASHBOARD SUPERIOR */
+        .dashboard-card { 
+            background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+            display: flex; justify-content: space-around; text-align: center;
+        }
+        .stat-box h3 { margin: 0; font-size: 2em; color: #0078d4; }
+        .stat-box p { margin: 0; font-size: 0.8em; color: #666; font-weight: bold; text-transform: uppercase; }
+        .stat-box.guests h3 { color: #d83b01; } /* Color diferente para invitados */
+
+        /* TARJETA DE CONTROL (CÁMARA Y ACCIONES) */
+        .control-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        
+        video { width: 100%; border-radius: 10px; transform: scaleX(-1); background: #000; border: 2px solid #eee; margin-bottom: 10px; }
+        .hidden { display: none !important; }
+        
+        select, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; margin-bottom: 10px; }
+        label { display: block; text-align: left; font-weight: 600; margin-bottom: 5px; color: #444; }
+
+        /* BARRA DE CAPACIDAD */
+        .capacity-container { background: #e9ecef; border-radius: 8px; overflow: hidden; margin-bottom: 20px; position: relative; height: 30px; }
+        .capacity-bar { height: 100%; width: 0%; transition: width 0.5s, background-color 0.5s; }
+        .capacity-text { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); font-weight: bold; font-size: 0.9em; color: #333; z-index: 2; text-shadow: 0 0 2px white; }
+
+        /* BOTONES */
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; color: white; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
+        .btn-entry { background-color: #107c10; } 
+        .btn-exit { background-color: #c50f1f; }   
+        
+        #status { margin-top: 15px; padding: 10px; border-radius: 8px; font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    
+    <div class="dashboard-card">
+        <div class="stat-box">
+            <h3 id="statSocios">--</h3>
+            <p>Socios Dentro</p>
+        </div>
+        <div class="stat-box guests">
+            <h3 id="statInvitados">--</h3>
+            <p>Invitados</p>
+        </div>
+    </div>
+
+    <div class="control-card">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" class="hidden"></canvas>
+
+        <label>📍 Control de Sala:</label>
+        <select id="idSala" onchange="actualizarDashboard()">
+            <option value="1">Musculación (Max 20)</option>
+            <option value="2">Fitness (Max 15)</option>
+            <option value="3">Piscina (Max 24)</option>
+            <option value="4">Cycling (Max 10)</option>
+            <option value="5">Cafetería (Max 40)</option>
+        </select>
+
+        <div class="capacity-container">
+            <div id="capBar" class="capacity-bar" style="width: 0%; background: #107c10;"></div>
+            <div id="capText" class="capacity-text">Cargando aforo...</div>
+        </div>
+
+        <div id="extraControls">
+            <label>👤 Tipo de Acceso:</label>
+            <select id="esInvitado" onchange="toggleAnfitrion()">
+                <option value="false">Soy Socio</option>
+                <option value="true">Soy Invitado</option>
+            </select>
+            
+            <div id="divAnfitrion" class="hidden">
+                <input type="number" id="idAnfitrion" placeholder="ID del Socio Anfitrión">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-entry" onclick="procesarAcceso(false)">ENTRADA</button>
+            <button class="btn-exit" onclick="procesarAcceso(true)">SALIDA</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+</div>
+
+<script>
+    // ================= CONFIGURACIÓN =================
+    const URL_ACCESO = "https://prod-14.switzerlandnorth.logic.azure.com:443/workflows/0e4acd47fb71411cb89486e746a78710/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=n7Kf6pltfra1UDsrF1AiWRE75xiPnUPShM8TpZI3f3E";
+
+    const URL_INFO   = "https://prod-12.switzerlandnorth.logic.azure.com:443/workflows/7ed978f13d454424a074baa1324c31d2/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=vHKqZahyB4MBajha8sArNRUq-U21c7QzU3UjaPNH_wk";
+    // =================================================
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const statusDiv = document.getElementById('status');
+
+    // 1. Iniciar WebCam
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { video.srcObject = stream; })
+        .catch(console.error);
+
+    // 2. Arrancar el Dashboard y programar "Tiempo Real" (cada 5 seg)
+    actualizarDashboard();
+    setInterval(actualizarDashboard, 5000); // <--- ESTO ES LA CLAVE DEL TIEMPO REAL
+
+    function toggleAnfitrion() {
+        const esInvitado = document.getElementById('esInvitado').value === 'true';
+        document.getElementById('divAnfitrion').classList.toggle('hidden', !esInvitado);
+    }
+
+    // --- FUNCIÓN DE LECTURA (Dashboard) ---
+    async function actualizarDashboard() {
+        if(URL_INFO.includes("PEGA_AQUI")) return;
+        const idSala = document.getElementById('idSala').value;
+
+        try {
+            const response = await fetch(URL_INFO, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_sala: parseInt(idSala) })
+            });
+
+            if (response.ok) {
+                const json = await response.json();
+                // Logic App devuelve un array en Table1 o directo
+                const datos = json.Table1 ? json.Table1[0] : json[0];
+
+                if(datos) {
+                    // A. Actualizar Panel Superior (Global)
+                    document.getElementById('statSocios').innerText = datos.Global_Socios;
+                    document.getElementById('statInvitados').innerText = datos.Global_Invitados;
+
+                    // B. Actualizar Barra de Sala (Específico)
+                    const ocupacion = datos.Ocupacion_Sala;
+                    const max = datos.Max_Sala;
+                    const porcentaje = Math.min((ocupacion / max) * 100, 100);
+
+                    document.getElementById('capText').innerText = `${ocupacion} / ${max} Personas`;
+                    const bar = document.getElementById('capBar');
+                    bar.style.width = porcentaje + "%";
+
+                    // C. Lógica de Colores (Semáforo)
+                    if (porcentaje >= 100) {
+                        bar.style.backgroundColor = "#c50f1f"; // Rojo (Lleno)
+                    } else if (porcentaje >= 80) {
+                        bar.style.backgroundColor = "#ffaa44"; // Naranja (Casi)
+                    } else {
+                        bar.style.backgroundColor = "#107c10"; // Verde (Libre)
+                    }
+                }
+            }
+        } catch (e) { console.error("Error actualizando dashboard", e); }
+    }
+
+    // --- FUNCIÓN DE ESCRITURA (Entrada/Salida) ---
+    async function procesarAcceso(esSalida) {
+        if(URL_ACCESO.includes("PEGA_AQUI")) return alert("Falta URL Acceso");
+
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = "⏳ Procesando...";
+        statusDiv.style.backgroundColor = "#fff3cd"; 
+
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
+
+        const payload = {
+            imagen: base64,
+            id_sala: parseInt(document.getElementById('idSala').value),
+            es_invitado: document.getElementById('esInvitado').value === 'true',
+            id_anfitrion: parseInt(document.getElementById('idAnfitrion').value) || 0,
+            es_salida: esSalida
+        };
+
+        try {
+            const res = await fetch(URL_ACCESO, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const json = await res.json();
+            
+            if (json.Table1 && json.Table1[0]) {
+                const r = json.Table1[0];
+                statusDiv.innerHTML = r.Mensaje;
+                statusDiv.style.backgroundColor = (r.Resultado === 'OK') ? "#d4edda" : "#f8d7da";
+                
+                // Si fue OK, forzamos actualización inmediata del dashboard
+                if(r.Resultado === 'OK') actualizarDashboard();
+            }
+        } catch (e) { 
+            statusDiv.innerHTML = "❌ Error conexión"; 
+        }
+    }
+</script>
+
+</body>
+</html>
