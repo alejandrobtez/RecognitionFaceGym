@@ -99,9 +99,9 @@ Para los invitados, el sistema aplica una lógica diferente: **se salta el recon
 
 ## 🛠️ Tecnologías
 
-* **Frontend:** HTML5, JavaScript (Vanilla), CSS3.
+* **Frontend:** HTML5.
 * **Backend:** Azure Logic Apps.
-* **IA:** Azure Cognitive Services (Face API).
+* **IA:** Azure Cognitive Services (Face).
 * **BBDD:** Azure SQL Database.
 
 ---
