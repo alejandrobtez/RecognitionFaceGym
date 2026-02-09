@@ -51,6 +51,7 @@ Scripts que gestionan las reglas críticas: **Anti-Passback** (no entrar si ya e
 
 ### Visualización de Datos
 Vista de los registros generados tras las pruebas de validación de usuarios.
+
 ![Vista de Datos](img/gym5.jpg)
 
 ---
