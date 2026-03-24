@@ -1,112 +1,112 @@
 # 🏋️‍♂️ RecognitionFaceGym
 
-### Control de Acceso Biométrico y Gestión de Aforo con Azure AI
+### Biometric Access Control and Occupancy Management with Azure AI
 
-> **🚀 VISTA RÁPIDA:** > Puedes consultar el código del panel de control principal aquí: [**📄 index.html**](./index.html)
-
----
-
-## 📖 Sobre el Proyecto
-
-**RecognitionFaceGym** es una solución "Serverless" para la gestión inteligente de gimnasios. Sustituye las tarjetas de acceso tradicionales por **Reconocimiento Facial**, permitiendo un control de flujo higiénico y seguro.
-
-El sistema no solo valida la identidad, sino que actúa como un **Centro de Mando en Tiempo Real**, gestionando el aforo de múltiples salas (Musculación, Piscina, etc.) y aplicando reglas de negocio complejas para socios e invitados.
+> **🚀 QUICK VIEW:** You can check the main control panel code here: [**📄 index.html**](./index.html)
 
 ---
 
-## ☁️ Arquitectura Cloud (Azure)
+## 📖 About the Project
 
-El proyecto se despliega al 100% en Microsoft Azure, garantizando escalabilidad y alta disponibilidad.
+**RecognitionFaceGym** is a "Serverless" solution for intelligent gym management. It replaces traditional access cards with **Facial Recognition**, allowing for a hygienic and secure flow control.
 
-![Infraestructura Azure](img/gym1.jpg)
-> **Fig 1.** *Grupo de recursos: Conexiones API, Face API (Cognitive Services), Logic Apps y Azure SQL Database.*
-
----
-
-## 🧠 Lógica del Backend (Logic Apps)
-
-Utilizamos dos flujos de trabajo orquestados para separar el procesamiento biométrico de la consulta de datos.
-
-### 1. El "Portero": Control de Acceso
-Recibe la imagen de la cámara, consulta a la IA para identificar al usuario y ejecuta la transacción en base de datos.
-
-![Logic App Principal](img/gym2.jpg)
-
-### 2. El "Informador": Microservicio de Aforo
-Consulta el estado de todas las salas cada 5 segundos para alimentar el dashboard en vivo.
-
-![Logic App Capacidad](img/gym3.jpg)
+The system not only validates identity but also acts as a **Real-Time Command Center**, managing occupancy for multiple areas (Weight Room, Swimming Pool, etc.) and applying complex business rules for members and guests.
 
 ---
 
-## 🗄️ Base de Datos & Reglas de Negocio (SQL)
+## ☁️ Cloud Architecture (Azure)
 
-El núcleo lógico reside en **Azure SQL Database**. Usamos **Stored Procedures** para encapsular la lógica de negocio y asegurar la integridad de los datos.
+The project is deployed 100% on Microsoft Azure, guaranteeing scalability and high availability.
 
-### Estructura y Tablas
-Diseño relacional para Socios (`Azure_PersonID`), Salas (con límites de capacidad) y Logs de acceso.
+![Azure Infrastructure](img/gym1.jpg)
+> **Fig 1.** *Resource Group: API Connections, Face API (Cognitive Services), Logic Apps, and Azure SQL Database.*
 
-![Tablas SQL](img/gym4.jpg)
+---
 
-### Lógica Programada (Stored Procedures)
-Scripts que gestionan las reglas críticas: **Anti-Passback** (no entrar si ya estás dentro) y **Límite de Invitados** (Max 2 por socio).
+## 🧠 Backend Logic (Logic Apps)
+
+We utilize two orchestrated workflows to separate biometric processing from data querying.
+
+### 1. The "Gatekeeper": Access Control
+Receives the image from the camera, queries the AI to identify the user, and executes the transaction in the database.
+
+![Main Logic App](img/gym2.jpg)
+
+### 2. The "Reporter": Occupancy Microservice
+Queries the status of all rooms every 5 seconds to feed the live dashboard.
+
+![Capacity Logic App](img/gym3.jpg)
+
+---
+
+## 🗄️ Database & Business Rules (SQL)
+
+The logical core resides in **Azure SQL Database**. We use **Stored Procedures** to encapsulate business logic and ensure data integrity.
+
+### Structure and Tables
+Relational design for Members (`Azure_PersonID`), Rooms (with capacity limits), and Access Logs.
+
+![SQL Tables](img/gym4.jpg)
+
+### Programmed Logic (Stored Procedures)
+Scripts that manage critical rules: **Anti-Passback** (cannot enter if already inside) and **Guest Limits** (Max 2 per member).
 
 ![Stored Procedures](img/gym6.jpg)
 
-### Visualización de Datos
-Vista de los registros generados tras las pruebas de validación de usuarios.
+### Data Visualization
+View of the records generated after user validation tests.
 
-![Vista de Datos](img/gym5.jpg)
-
----
-
-## 📸 Demostración de Uso (Casos de Prueba)
-
-A continuación se muestran los flujos reales de interacción con el sistema mediante la interfaz web.
-
-### 1. Acceso de Socio (Identificación Biométrica)
-El sistema captura el rostro, lo compara con el `PersonGroup` de Azure y, si hay coincidencia, devuelve un saludo personalizado.
-
-![Entrada Socio](img/gym7.jpg)
-> **Fig 7.** *El sistema reconoce al usuario y le da la bienvenida por su nombre ("Bienvenido Alejandro").*
-
-### 2. Salida de Socio
-Al registrar la salida, el sistema libera el aforo en tiempo real y actualiza los contadores de la sala correspondiente.
-
-![Salida Socio](img/gym8.jpg)
-> **Fig 8.** *Confirmación de salida.*
-
-### 3. Entrada de Invitado (Gestión de Aforo)
-Los invitados acceden vinculados al ID de un socio anfitrión (sin identificación facial). El dashboard diferencia entre tipos de usuario.
-
-![Entrada Invitado](img/gym9.jpg)
-> **Fig 9.** *Acceso concedido a un invitado del Socio con ID 2. Nótese en la barra superior cómo el contador de "Invitados" ha aumentado. Solo pueden entrar 2 invitados por socio.*
-
-### 4. Salida de Invitado (Bypass de IA)
-Para los invitados, el sistema aplica una lógica diferente: **se salta el reconocimiento facial** (Face Identify) para proteger la privacidad, ya que no existen en la base de datos biométrica, limitándose a validar el ID del anfitrión.
-
-![Salida Invitado](img/gym10.jpg)
-> **Fig 10.** *El sistema procesa la salida del invitado sin realizar identificación facial.*
+![Data View](img/gym5.jpg)
 
 ---
 
-## ✨ Características Principales
+## 📸 Usage Demonstration (Test Cases)
 
-* **🔐 Acceso Biométrico:** Entrada sin contacto mediante Azure Face API.
-* **⏱️ Tiempo Real:** Dashboard con actualización automática (5s) y semáforos de ocupación.
-* **👥 Gestión de Invitados:**
-    * Validación de ID del anfitrión.
-    * Restricción automática: **Máximo 2 invitados** simultáneos.
-* **🛑 Seguridad:** Control de doble acceso (Anti-Passback) y validación de aforo máximo por sala.
+The following sections show real interaction flows with the system through the web interface.
+
+### 1. Member Access (Biometric Identification)
+The system captures the face, compares it with the Azure `PersonGroup`, and, if there is a match, returns a personalized greeting.
+
+![Member Entry](img/gym7.jpg)
+> **Fig 7.** *The system recognizes the user and welcomes them by name ("Welcome Alejandro").*
+
+### 2. Member Exit
+When registering the exit, the system releases occupancy in real-time and updates the corresponding room counters.
+
+![Member Exit](img/gym8.jpg)
+> **Fig 8.** *Exit confirmation.*
+
+### 3. Guest Entry (Occupancy Management)
+Guests gain access linked to a host member's ID (without facial identification). The dashboard differentiates between user types.
+
+![Guest Entry](img/gym9.jpg)
+> **Fig 9.** *Access granted to a guest of Member ID 2. Note in the top bar how the "Guests" counter has increased. Only 2 guests are allowed per member.*
+
+### 4. Guest Exit (AI Bypass)
+For guests, the system applies a different logic: **it bypasses facial recognition** (Face Identify) to protect privacy, as they do not exist in the biometric database, limiting the process to validating the host ID.
+
+![Guest Exit](img/gym10.jpg)
+> **Fig 10.** *The system processes the guest exit without performing facial identification.*
 
 ---
 
-## 🛠️ Tecnologías
+## ✨ Main Features
+
+* **🔐 Biometric Access:** Contactless entry via Azure Face API.
+* **⏱️ Real-Time:** Dashboard with automatic updates (5s) and occupancy traffic lights.
+* **👥 Guest Management:**
+    * Host ID validation.
+    * Automatic restriction: **Maximum of 2 simultaneous guests**.
+* **🛑 Security:** Anti-Passback control and maximum occupancy validation per room.
+
+---
+
+## 🛠️ Technologies
 
 * **Frontend:** HTML5.
 * **Backend:** Azure Logic Apps.
-* **IA:** Azure Cognitive Services (Face).
-* **BBDD:** Azure SQL Database.
+* **AI:** Azure Cognitive Services (Face).
+* **Database:** Azure SQL Database.
 
 ---
-*Desarrollado por [Alejandro Benitez](https://github.com/alejandrobtez)*
+*Developed by [Alejandro Benitez](https://github.com/alejandrobtez)*
